@@ -186,6 +186,25 @@ namespace Nop.Web.Framework.Infrastructure.Extensions
         }
 
         /// <summary>
+        /// Perform file deploy and return loaded assembly
+        /// </summary>
+        /// <param name="applicationPartManager">Application part manager</param>
+        /// <param name="assemblyFile">Path to the plugin assembly file</param>
+        /// <param name="fileProvider">Nop file provider</param>
+        /// <returns>Assembly</returns>
+        private static void PerformFileDeploy(this ApplicationPartManager applicationPartManager,
+            string assemblyFile, INopFileProvider fileProvider)
+        {
+            //ensure for proper directory structure
+            if (string.IsNullOrEmpty(assemblyFile) ||
+                string.IsNullOrEmpty(fileProvider.GetParentDirectory(assemblyFile)))
+                throw new InvalidOperationException(
+                    $"The assembly directory for the {fileProvider.GetFileName(assemblyFile)} file exists in a directory outside of the allowed nopCommerce directory hierarchy");
+
+            AddApplicationParts(applicationPartManager, assemblyFile, false);
+        }
+
+        /// <summary>
         /// Check whether the assembly is already loaded
         /// </summary>
         /// <param name="filePath">Assembly file path</param>
@@ -339,6 +358,35 @@ namespace Nop.Web.Framework.Infrastructure.Extensions
                         !type.IsAbstract));
                 NameCompatibilityManager.AdditionalNameCompatibilities.AddRange(nameCompatibilityList);
             }
+        }
+
+        /// <summary>
+        /// Initialize plugins system
+        /// </summary>
+        /// <param name="applicationPartManager">Application part manager</param>
+        public static void InitializeAppContext(this ApplicationPartManager applicationPartManager)
+        {
+            if (applicationPartManager == null)
+                throw new ArgumentNullException(nameof(applicationPartManager));
+            
+            //perform with locked access to resources
+            using (new ReaderWriteLockDisposable(_locker))
+                try
+                {
+                    var fileProvider = CommonHelper.DefaultFileProvider;
+
+                    foreach (var dllPath in fileProvider.GetFiles(AppContext.BaseDirectory, "*.dll"))
+                        applicationPartManager.PerformFileDeploy(dllPath, fileProvider);
+                }
+                catch (Exception exception)
+                {
+                    //throw full exception
+                    var message = string.Empty;
+                    for (var inner = exception; inner != null; inner = inner.InnerException)
+                        message = $"{message}{inner.Message}{Environment.NewLine}";
+
+                    throw new NopException(message, exception);
+                }
         }
 
         #endregion

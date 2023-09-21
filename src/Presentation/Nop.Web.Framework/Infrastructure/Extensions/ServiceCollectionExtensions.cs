@@ -91,6 +91,8 @@ namespace Nop.Web.Framework.Infrastructure.Extensions
 
             //initialize plugins
             var mvcCoreBuilder = services.AddMvcCore();
+            mvcCoreBuilder.PartManager.InitializeAppContext();
+
             var pluginConfig = new PluginConfig();
             builder.Configuration.GetSection(nameof(PluginConfig)).Bind(pluginConfig, options => options.BindNonPublicProperties = true);
             mvcCoreBuilder.PartManager.InitializePlugins(pluginConfig);
