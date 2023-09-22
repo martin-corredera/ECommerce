@@ -371,22 +371,19 @@ namespace Nop.Web.Framework.Infrastructure.Extensions
             
             //perform with locked access to resources
             using (new ReaderWriteLockDisposable(_locker))
-                try
-                {
-                    var fileProvider = CommonHelper.DefaultFileProvider;
+            {
+                var fileProvider = CommonHelper.DefaultFileProvider;
 
-                    foreach (var dllPath in fileProvider.GetFiles(AppContext.BaseDirectory, "*.dll"))
+                foreach (var dllPath in fileProvider.GetFiles(AppContext.BaseDirectory, "*.dll"))
+                    try
+                    {
                         applicationPartManager.PerformFileDeploy(dllPath, fileProvider);
-                }
-                catch (Exception exception)
-                {
-                    //throw full exception
-                    var message = string.Empty;
-                    for (var inner = exception; inner != null; inner = inner.InnerException)
-                        message = $"{message}{inner.Message}{Environment.NewLine}";
-
-                    throw new NopException(message, exception);
-                }
+                    }
+                    catch
+                    {
+                        //ignore
+                    }
+            }
         }
 
         #endregion
